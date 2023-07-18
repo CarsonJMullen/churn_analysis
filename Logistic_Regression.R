@@ -1,14 +1,17 @@
 library(tidyverse)
 library(dplyr)
 library(caret)
+library(MASS)
 
-df <- WA_Fn.UseC_.Telco.Customer.Churn
+# Read data, make sure you set your directory
+df <- read.csv('WA_Fn-UseC_-Telco-Customer-Churn.csv')
 
 # Create a function to convert "Yes" to 1 and "No" to 0
 convert_to_binary <- function(column){
   ifelse(column == "Yes", as.numeric(1), as.numeric(0))
 }
 
+#Convert Yes/No columns to binary
 df$Partner <- convert_to_binary(df$Partner)
 df$Dependents <- convert_to_binary(df$Dependents)
 df$PhoneService <- convert_to_binary(df$PhoneService)
@@ -23,63 +26,25 @@ df$MultipleLines <- convert_to_binary(df$MultipleLines)
 df$Churn <- convert_to_binary(df$Churn)
 df$gender = ifelse(df$gender == "Female", 1, 0)
 
-df$InternetService <- as.factor(df$InternetService)
-df$Contract <- as.factor(df$Contract)
-df$PaymentMethod <- as.factor(df$PaymentMethod)
+#Creates a model with all variables
+full_model <- glm(Churn ~ . - customerID + tenure*StreamingMovies, data = df, family = binomial)
+#Creates a model with all variables & interactions b/t all variables
+full_interaction_model <- glm(Churn ~ (. - customerID)^2, data = df, family = binomial)
 
-test <- glm(Churn ~ TotalCharges, data = df, family = binomial)
+#Summaries
+summary(full_model)
+summary(full_interaction_model)
 
-summary(test)
+#Backward Selection
+backward_model <- step(full_model, direction = "backward")
 
+summary(backward_model)
+summary(backward_interaction_model)
 
-add_dummys <- df[, c("InternetService", "Contract", "PaymentMethod")]
+null_model <- glm(Churn ~ 1, data = df, family = binomial)
 
-dummy_data <- dummyVars(~ ., data = add_dummys)
-df_with_dummies <- data.frame(predict(dummy_data, newdata = add_dummys))
-df_without_dummies <- df %>% 
-  select(-any_of(names(add_dummys)))
-
-full_df <- cbind(df_without_dummies, df_with_dummies)
-
-model1 <- glm(Churn ~ . - customerID - MonthlyCharges, data = full_df, family = binomial)
-
+forward_model <- step(null_model, direction = "forward")
 
 
-backward_model <- step(model1, direction = "backward")
-
-# Cross Validate
-
-# Assuming you have the 'caret' package installed
-library(caret)
-
-# Assuming you have a data frame 'full_df' with predictor variables (excluding Churn and customerID) and a response variable 'Churn'.
-predictors <- full_df %>% select(-c(Churn, customerID))
-response <- full_df$Churn
-
-# Create the trainControl object for 10-fold cross-validation
-ctrl <- trainControl(method = "cv", number = 10)  # 10-fold cross-validation
-
-# Fit the logistic regression model using cross-validation
-model <- train(predictors, response, method = "glm", trControl = ctrl)
-
-# Access the cross-validation results
-print(summary(model))
-conf_matrix <- confusionMatrix(predict(model, predictors), response)
-print(conf_matrix)
-
-df_without_dummies <- df_without_dummies %>% 
-  select(-customerID)
-
-cor(df_without_dummies)
-
-# Load necessary libraries
-library(caret)
-
-# Assuming you have a data frame 'full_df' with predictor variables (excluding Churn and customerID) and a response variable 'Churn'.
-predictors <- full_df %>% select(-c(Churn, customerID))
-response <- full_df$Churn
-
-# Create the trainControl object for 10-fold cross-validation
-ctrl <- trainControl(method = "cv", number = 10)  # 10-fold cross-validation
 
 
