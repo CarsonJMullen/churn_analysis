@@ -12,31 +12,28 @@ convert_to_binary <- function(column){
   ifelse(column == "Yes", as.numeric(1), as.numeric(0))
 }
 
-columns_to_convert <- c("Partner", "Dependents", "PhoneService", "OnlineSecurity", )
+columns_to_convert <- c("Partner", "Dependents", "PhoneService", "OnlineSecurity", 
+                        "OnlineBackup", "DeviceProtection", "TechSupport", 
+                        "StreamingTV", "StreamingMovies", "PaperlessBilling", 
+                        "MultipleLines", "Churn")
 
-#Convert Yes/No columns to binary
-df$Partner <- convert_to_binary(df$Partner)
-df$Dependents <- convert_to_binary(df$Dependents)
-df$PhoneService <- convert_to_binary(df$PhoneService)
-df$OnlineSecurity <- convert_to_binary(df$OnlineSecurity)
-df$OnlineBackup <- convert_to_binary(df$OnlineBackup)
-df$DeviceProtection <- convert_to_binary(df$DeviceProtection)
-df$TechSupport <- convert_to_binary(df$TechSupport)
-df$StreamingTV <- convert_to_binary(df$StreamingTV)
-df$StreamingMovies <- convert_to_binary(df$StreamingMovies)
-df$PaperlessBilling <- convert_to_binary(df$PaperlessBilling)
-df$MultipleLines <- convert_to_binary(df$MultipleLines)
-df$Churn <- convert_to_binary(df$Churn)
+# Use lapply to apply the convert_to_binary function to each column in the list
+df[columns_to_convert] <- lapply(df[columns_to_convert], convert_to_binary)
 df$gender = ifelse(df$gender == "Female", 1, 0)
-
 df$Churn <- factor(df$Churn)
+
+##### Split into Test/Train Split
+set.seed(123)
+trainIndex <- createDataPartition(df$Churn, p = 0.7, list = FALSE)
+train_df <- df[trainIndex, ]
+test_df <- df[-trainIndex, ]
 
 ##### Building Models
 
 #Creates a model with all variables
-full_model <- glm(Churn ~ . - customerID + tenure*StreamingMovies, data = df, family = binomial)
+full_model <- glm(Churn ~ . - customerID - TotalCharges+ tenure*StreamingMovies, data = train_df, family = binomial)
 #Creates a model with all variables & interactions b/t all variables
-full_interaction_model <- glm(Churn ~ (. - customerID)^2, data = df, family = binomial)
+full_interaction_model <- glm(Churn ~ (. - customerID)^2, data = train_df, family = binomial)
 
 #Summaries
 summary(full_model)
@@ -56,15 +53,7 @@ summary(backward_model)
 summary(forward_model)
 summary(stepwise_model)
 
-###############
+backward_predictions <- predict(backward_model,newdata=test_df,type='response')
+backward_predictions %>% round
 
-trainControl(method = "cv", 
-             number = 10)
-
-backward_model <- train(Churn ~ SeniorCitizen + Dependents+tenure+ MultipleLines+InternetService+OnlineSecurity+TechSupport+StreamingTV + StreamingMovies + Contract + PaperlessBilling + PaymentMethod + MonthlyCharges + TotalCharges, data = df,
-                        method = "glm",
-                        trControl = trainControl)
-
-
-print(backward_model)
-
+sum(backward_predictions %>% round == test_df$Churn)/length(test_df)
