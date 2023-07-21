@@ -2,6 +2,7 @@ library(tidyverse)
 library(dplyr)
 library(caret)
 library(MASS)
+library(pROC)
 
 # Read data, make sure you set your directory
 df <- read.csv('WA_Fn-UseC_-Telco-Customer-Churn.csv')
@@ -54,6 +55,30 @@ summary(forward_model)
 summary(stepwise_model)
 
 backward_predictions <- predict(backward_model,newdata=test_df,type='response')
-backward_predictions %>% round
 
-sum(backward_predictions %>% round == test_df$Churn)/length(test_df)
+sum(backward_predictions %>% round == test_df$Churn)/length(test_df$Churn)
+
+predicted.model <- ifelse(predict(backward_model,newdata=test_df,type='response') >= 0.2, 1, 0)
+
+xtabs(~predicted.model + test_df$Churn)
+
+####################
+
+# Assuming 'predictions' is the vector of predicted probabilities or scores
+# and 'labels' is the vector of true binary labels (0 or 1)
+
+roc_curve <- roc(test_df$Churn, predict(backward_model,newdata=test_df,type='response'))
+auc(roc_curve)
+plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+
+TP <- sum(test_df$Churn == predicted.model & test_df$Churn == 1)
+TN <- sum(test_df$Churn == predicted.model & test_df$Churn == 0)
+FN <- sum(test_df$Churn != predicted.model & test_df$Churn == 1)
+FP <- sum(test_df$Churn != predicted.model & test_df$Churn == 0)
+
+TPR <- TP/(TP + FN)
+TNR <- TN/(TN + FP)
+FPR <- FP/(FP + TN)
+FNR <- FN/(FN + TP)
+
+
