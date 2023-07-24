@@ -59,7 +59,7 @@ for (i in 1:nset) {
 
 
 # Final Model with Best Hyperparameters
-final_boost_model <- gbm(Churn ~ . - TotalCharges -Contract, data = train_data, distribution = 'bernoulli',
+final_boost_model <- gbm(Churn ~ . , data = train_data, distribution = 'bernoulli',
                          interaction.depth = 20,
                          n.trees = 7000,
                          shrinkage = 0.001)
